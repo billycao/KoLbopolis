@@ -26,6 +26,7 @@ Installation and Use
 3. Open your terminal (Start -> Run -> cmd.exe)
 4. Navigate to where you downloaded KoLbopolis
 5. Run the following command:
-
+...
     python kolbopolis.py
+...
 
