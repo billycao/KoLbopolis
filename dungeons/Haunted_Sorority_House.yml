@@ -1,0 +1,39 @@
+columns:
+    - id: 0
+      name: 'Ghosts Killed'
+      val:  'defeated sexy sorority ghost'
+    - id: 1
+      name: 'Werewolves Killed'
+      val:  'defeated sexy sorority werewolf'
+    - id: 2
+      name: 'Vampires Killed'
+      val:  'defeated sexy sorority vampire'
+    - id: 3
+      name: 'Zombies Killed'
+      val:  'defeated sexy sorority zombie'
+    - id: 4
+      name: 'Skeletons Killed'
+      val:  'defeated sexy sorority skeleton'
+
+    - id: 5
+      name: 'Ghost Pack Killed'
+      val:  'trapped some ghosts'
+    - id: 6
+      name: 'Werewolf Pack Killed'
+      val:  'took care of some werewolves'
+    - id: 7
+      name: 'Vampire Pack Killed'
+      val:  'slew some vampires'
+    - id: 8
+      name: 'Zombie Pack Killed'
+      val:  'took out some zombies'
+    - id: 9
+      name: 'Skeleton Pack Killed'
+      val:  'took out some skeletons'
+
+    - name: 'Defeated'
+      val:  'was defeated by .*'
+    - name: 'Necbromancer Killed'
+      val:  'defeated The Necbromancer'
+
+score: 'c0 + c1 + c2 + c3 + c4 + c5 * 10 + c6 * 20 + c7 * 25 + c8 * 15 + c9 * 15'
