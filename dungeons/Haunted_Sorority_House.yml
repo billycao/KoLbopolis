@@ -1,19 +1,21 @@
+# the \s+ is for the random appearance of spaces in the logs
+# Column IDs do not have to be sequential or start at 0
 columns:
     - id: 0
       name: 'Ghosts Killed'
-      val:  'defeated sexy sorority ghost'
+      val:  'defeated\s+sexy sorority ghost x \d+'
     - id: 1
       name: 'Werewolves Killed'
-      val:  'defeated sexy sorority werewolf'
+      val:  'defeated\s+sexy sorority werewolf x \d+'
     - id: 2
       name: 'Vampires Killed'
-      val:  'defeated sexy sorority vampire'
+      val:  'defeated\s+sexy sorority vampire x \d+'
     - id: 3
       name: 'Zombies Killed'
-      val:  'defeated sexy sorority zombie'
+      val:  'defeated\s+sexy sorority zombie x \d+'
     - id: 4
       name: 'Skeletons Killed'
-      val:  'defeated sexy sorority skeleton'
+      val:  'defeated\s+sexy sorority skeleton x \d+'
 
     - id: 5
       name: 'Ghost Pack Killed'
@@ -31,9 +33,14 @@ columns:
       name: 'Skeleton Pack Killed'
       val:  'took out some skeletons'
 
-    - name: 'Defeated'
+    - id: 10
+      name: 'Defeated'
       val:  'was defeated by .*'
-    - name: 'Necbromancer Killed'
+    - id: 11
+      name: 'Necbromancer Killed'
       val:  'defeated The Necbromancer'
+    - id: 12
+      name: 'Other'
+      val:  '.+'
 
 score: 'c0 + c1 + c2 + c3 + c4 + c5 * 10 + c6 * 20 + c7 * 25 + c8 * 15 + c9 * 15'

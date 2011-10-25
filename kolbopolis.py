@@ -8,22 +8,26 @@ import yaml
 from BeautifulSoup import BeautifulSoup
 
 __author__  = 'Billy Cao'
-__license__ = 'GPL'
+__license__ = 'MIT'
 __version__ = '0.1'
 __status__  = 'Prototype'
 
 # The URL of the clan old logs
-OLDLOGS_URL = 'http://127.0.0.1:60080/clan_oldraidlogs.php'
-VIEWLOG_URL = 'http://127.0.0.1:60080/clan_viewraidlog.php'
+# Set this to http://kingdomofloathing.com/ or http://127.0.0.1:60080/
+# to disable the startup prompt.
+KOL_URL     = ''
+OLDLOGS_PAGE = 'clan_oldraidlogs.php'
+VIEWLOG_PAGE = 'clan_viewraidlog.php'
+LOG_REGEX   = '(.*?)\s+\(#(\d*)\)\s+line_regex\s+\((\d*)\s+turns*\)'
 
 class DungeonLog():
-    soup = None
-    dungeonName = ''
-    columns = []
-    data = {}
-    score_equation = ''
+    dungeonName = ''        # Name (type) of dungeon
+    columns = {}            # dict of columns (set in *.yml)
+    data = {}               # dict of rows
+    score_equation = ''     # Equation for 'score' column (set in *.yml)
 
     def __init__(self,dungeonName):
+        """Given a dungeon name, open settings YAML file and apply settings (ie. columns)"""
         self.dungeonName = dungeonName
 
         # Open and load dungeon YML
@@ -32,30 +36,91 @@ class DungeonLog():
         f.close()
         self.score_equation = settings['score']
         for column in settings['columns']:
-            colid = column['id'] if 'id' in column else ''
-            if column['name'] and column['val']:
-                self.columns.append([colid, column['name'], column['val']])
+            if 'id' in column and 'name' in column and 'val' in column:
+                colid = column['id']
+                self.columns[colid] = {'id': colid, 'name': column['name'], 'val': column['val']}
             else:
-                exit('ERROR: Column missing name or value: \n'+column)
+                exit('ERROR: Column missing id, name, or value: \n'+column)
+
+    def process_log(self,soup):
+        """Given a BeautifulSoup object of a log page, traverse line by line
+        and add the log data to self.data"""
+        log = soup('blockquote')[0].contents
+
+        for element in log:
+            if element.string:
+                log_row = str(element.string)   # The raw log line (eg. Bakaa is awesome (1 turn))
+                log_row_data = []               # dict (colname, colid, playername, playerid, value)
+                # Match log line with our catalog of columns
+                for colid, column in self.columns.items():
+                    regex = LOG_REGEX.replace('line_regex',column['val'])
+                    m = re.search(regex, log_row)
+                    if m:
+                        try:
+                            log_row_data = {
+                                'colname'   : column['name'],
+                                'colid'     : colid,
+                                'playername': m.group(1),
+                                'playerid'  : m.group(2),
+                                'value'     : int(m.group(3)),
+                            }
+                        except ValueError:
+                            exit('ERROR: The value of turns was not numerical:\n')
+                            print log_row
+                        break
+                # Enter in this matched line into self.data
+                if not log_row_data:
+                    raw_input('WARNING: The following row was not recognized.'
+                              + ' Press Enter to continue.\n' + log_row)
+                else:
+                    # Check if row for this user already exists in self.data
+                    # If so, increment value for correct column
+                    # If not, create the row and insert value into correct column
+                    if log_row_data['playerid'] in self.data:
+                        if log_row_data['colid'] in self.data[log_row_data['playerid']]:
+                            self.data[log_row_data['playerid']][log_row_data['colid']] += log_row_data['value']
+                        else:
+                            self.data[log_row_data['playerid']][log_row_data['colid']] = log_row_data['value']
+                    else:
+                        self.data[log_row_data['playerid']] = {
+                            'playername': log_row_data['playername'],
+                            'playerid'  : log_row_data['playerid'],
+                            log_row_data['colid'] : log_row_data['value']
+                        }
+
+        # Parse loot logs and append them to log_loot
+        # Loot logs, because of their <b> tag, are grouped into 4s
+        log_loot = []
+        loot_line = ''
+        for i,element in enumerate(soup('blockquote')[1].contents):
+            if i % 4 == 3:
+                log_loot += [loot_line]
+                loot_line = ''
+            elif element.string:
+                loot_line += element.string
+
+        #TODO: Process loot logs
+
 
 class ClanLog():
-    soup = None
-    log_ids = []
-    dungeon_logs = []
-    dungeon_names = []
+    soup = None             # BeautifulSoup object of the first old logs page
+    log_ids = []            # List of dungeon log IDs
+    dungeon_logs = []       # List of DungeonLog objects
 
     def __init__(self):
         """Open clan old logs page, create soup object from page data."""
         #TODO: Verify page format
-        print 'Opening '+OLDLOGS_URL+'... '
+        print 'Opening '+KOL_URL+OLDLOGS_PAGE+'... '
         try:
-            html = urllib2.urlopen(OLDLOGS_URL)
+            html = urllib2.urlopen(KOL_URL+OLDLOGS_PAGE)
             self.soup = BeautifulSoup(html)
             html.close()
         except:
             exit('ERROR: Could not resolve URL. Please check your connection.')
             raise
         print 'Success! Old log page opened.\n'
+        self.get_logids()
+
     def get_logids(self):
         """Get clan log ids (eg. 114464) from "view logs" links."""
         #TODO: Insert code for multiple log pages
@@ -76,9 +141,10 @@ class ClanLog():
             print 'Success! '+str(len(self.log_ids))+' log IDs discovered.'
         else:
             exit('ERROR: No log IDs found. Are you logged in?')
+            
     def process_logid(self, logid):
         try:
-            html = urllib2.urlopen(VIEWLOG_URL+'?viewlog='+str(logid))
+            html = urllib2.urlopen(KOL_URL+VIEWLOG_PAGE+'?viewlog='+str(logid))
             log_soup = BeautifulSoup(html)
             html.close()
         except:
@@ -86,37 +152,46 @@ class ClanLog():
                  + 'Please check your connection.')
             raise
 
-        # Get name of Dungeon
+        # Get name (type) of Dungeon
         m = re.search('<center><b>(.*?) run, .*?</b></center>',
-                       str(log_soup.html))
+                      str(log_soup.html))
         dungeonName = m.group(1).replace(' ','_')
 
         # Create or get dungeon log
         dungeonLog = None
-        for i,name in enumerate(self.dungeon_names):
-            if name == dungeonName:
-                dungeonLog = self.dungeon_logs[i]
+        for dlog in self.dungeon_logs:
+            if dlog.dungeonName == dungeonName:
+                dungeonLog = dlog
         if dungeonLog is None:
-            self.dungeon_names.append(dungeonName)
             dungeonLog = DungeonLog(dungeonName)
             self.dungeon_logs.append(dungeonLog)
+
+        dungeonLog.process_log(log_soup)
 
 def main(argv=None):
     #TODO: Command line arguments
     if argv is None:
         argv = sys.argv
 
+    # Prompt user for KOL_URL if not already provided
+    global KOL_URL
+    while not KOL_URL:
+        input = raw_input('Are you using KoLmafia (relay browser)? (y or n): ')
+        if input == 'y' or input == 'Y':
+            KOL_URL = 'http://127.0.0.1:60080/'
+        elif input == 'n' or input == 'N':
+            KOL_URL = 'http://kingdomofloathing.com/'
+
     # Connect to oldlogs.php, get log ids
     c = ClanLog()
-    c.get_logids()
     num_logids = len(c.log_ids)
     for i,logid in enumerate(c.log_ids):
-        #TODO: Inititialize dungeon, find dungeon type
         print 'Processing log #'+str(logid)+'... ('+str(i+1)+'/'+str(num_logids)+')'
         c.process_logid(logid)
         #TODO: Use dungeon object to calculate loot information
         #TODO: Export data into csv
-        
+
+    print c.dungeon_logs[0].data
 
 if __name__ == '__main__':
     sys.exit(main())
