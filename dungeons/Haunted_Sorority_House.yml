@@ -35,10 +35,10 @@ columns:
 
     - id: 10
       name: 'Defeated'
-      val:  'was defeated by .*'
+      val:  'was defeated by\s+.*'
     - id: 11
       name: 'Necbromancer Killed'
-      val:  'defeated The Necbromancer'
+      val:  'defeated\s+The Necbromancer'
     - id: 12
       name: 'Other'
       val:  '.+'
