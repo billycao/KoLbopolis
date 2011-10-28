@@ -2,9 +2,11 @@
 """Clan Dungeon History Parser"""
 
 import sys
+import os
 import re
 import urllib2
 import yaml
+import csv
 from BeautifulSoup import BeautifulSoup
 
 __author__  = 'Billy Cao'
@@ -38,7 +40,7 @@ class DungeonLog():
         for column in settings['columns']:
             if 'id' in column and 'name' in column and 'val' in column:
                 colid = column['id']
-                self.columns[colid] = {'id': colid, 'name': column['name'], 'val': column['val']}
+                self.columns[colid] = {'name': column['name'], 'val': column['val']}
             else:
                 exit('ERROR: Column missing id, name, or value: \n'+column)
 
@@ -90,17 +92,49 @@ class DungeonLog():
 
         # Parse loot logs and append them to log_loot
         # Loot logs, because of their <b> tag, are grouped into 4s
-        log_loot = []
-        loot_line = ''
-        for i,element in enumerate(soup('blockquote')[1].contents):
-            if i % 4 == 3:
-                log_loot += [loot_line]
-                loot_line = ''
-            elif element.string:
-                loot_line += element.string
+        if len(soup('blockquote')) > 1:
+            log_loot = []
+            loot_line = ''
+            for i,element in enumerate(soup('blockquote')[1].contents):
+                if i % 4 == 3:
+                    log_loot += [loot_line]
+                    loot_line = ''
+                elif element.string:
+                    loot_line += element.string
 
-        #TODO: Process loot logs
+            #TODO: Process loot logs
 
+    def export_csv(self):
+        """Creates a CSV export of the data in self.data"""
+        # Prompt user for overwrite if file exists
+        fileName = 'data/'+self.dungeonName+'.csv'
+        if os.path.exists(fileName):
+            while True:
+                input = raw_input(fileName+' already exists. Overwrite? (y or n) ')
+                if input == 'y' or input == 'Y':
+                    break
+                elif input == 'n' or input == 'N':
+                    # If user chooses not to overwrite, generate unique filename
+                    copyCounter = 1
+                    while os.path.exists(fileName):
+                        fileName = 'data/'+self.dungeonName+' ('+copyCounter+').csv'
+                    break
+        # Open file for writing
+        print 'Writing data into '+fileName+'...'
+        f = open(fileName,'wb')
+        csvWriter = csv.writer(f)
+        # Write columns
+        row = ['Player','ID']
+        for i,column in self.columns.items():
+            row.append(column['name'])
+        csvWriter.writerow(row)
+        # Write data
+        for id,user in self.data.items():
+            row = [user['playername'], id]
+            for i,column in self.columns.items():
+                row.append(user[i] if i in user else 0)
+            csvWriter.writerow(row)
+        f.close()
 
 class ClanLog():
     soup = None             # BeautifulSoup object of the first old logs page
@@ -109,7 +143,7 @@ class ClanLog():
 
     def __init__(self):
         """Open clan old logs page, create soup object from page data."""
-        #TODO: Verify page format
+        #TODO: Verify page format (in case the KoL devs changed something)
         print 'Opening '+KOL_URL+OLDLOGS_PAGE+'... '
         try:
             html = urllib2.urlopen(KOL_URL+OLDLOGS_PAGE)
@@ -168,8 +202,14 @@ class ClanLog():
 
         dungeonLog.process_log(log_soup)
 
+    #TODO: Export csv function
+
 def main(argv=None):
     #TODO: Command line arguments
+    # -l [log number]   - Specific log number to process
+    # -p [port]         - Port of KoLmafia relay browser
+    # -d|--dungeon [haunted:hobopolis:slime] - Dungeon to process
+    # -v|--verbose      - Verbose output
     if argv is None:
         argv = sys.argv
 
@@ -189,10 +229,8 @@ def main(argv=None):
     for i,logid in enumerate(c.log_ids):
         print 'Processing log #'+str(logid)+'... ('+str(i+1)+'/'+str(num_logids)+')'
         c.process_logid(logid)
-        #TODO: Use dungeon object to calculate loot information
-        #TODO: Export data into csv
 
-    print c.dungeon_logs[0].data
+    c.dungeon_logs[0].export_csv()
 
 if __name__ == '__main__':
     sys.exit(main())
