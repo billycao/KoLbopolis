@@ -180,7 +180,8 @@ def main(argv=None):
         if input == 'y' or input == 'Y':
             KOL_URL = 'http://127.0.0.1:60080/'
         elif input == 'n' or input == 'N':
-            KOL_URL = 'http://kingdomofloathing.com/'
+            exit('ERROR: This has not yet been implemented.')
+            # KOL_URL = 'http://kingdomofloathing.com/'
 
     # Connect to oldlogs.php, get log ids
     c = ClanLog()
