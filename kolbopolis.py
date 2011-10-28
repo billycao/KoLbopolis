@@ -18,7 +18,7 @@ __status__  = 'Prototype'
 # Set this to http://kingdomofloathing.com/ or http://127.0.0.1:60080/
 # to disable the startup prompt.
 KOL_URL     = ''
-OLDLOGS_PAGE = 'clan_oldraidlogs.php'
+OLDLOGS_PAGE = 'clan_oldraidlogs.php?startrow='
 VIEWLOG_PAGE = 'clan_viewraidlog.php'
 LOG_REGEX   = '(.*?)\s+\(#(\d*)\)\s+line_regex\s+\((\d*)\s+turns*\)'
 
@@ -137,7 +137,8 @@ class DungeonLog():
         f.close()
 
 class ClanLog():
-    soup = None             # BeautifulSoup object of the first old logs page
+    soup = None             # BeautifulSoup object of current log page being processed
+    num_logs = 0            # Number of dungeon logs (From 'Showing 1-10 of XXX')
     log_ids = []            # List of dungeon log IDs
     dungeon_logs = []       # List of DungeonLog objects
 
@@ -153,24 +154,46 @@ class ClanLog():
             exit('ERROR: Could not resolve URL. Please check your connection.')
             raise
         print 'Success! Old log page opened.\n'
+        # Get number of total logs
+        found = self.soup.findAll(text=re.compile('Showing .*? of (\d*)'))
+        match = re.match('Showing .*? of (\d*)',found[0])
+        self.num_logs = int(match.group(1))
+        # Get log_ids into self.log_ids
         self.get_logids()
 
     def get_logids(self):
         """Get clan log ids (eg. 114464) from "view logs" links."""
         #TODO: Insert code for multiple log pages
         print 'Extracting log IDs...'
-        for td in self.soup.findAll('td', {'class': 'tiny'}):
-            open_bracket, link_tag, close_bracket = td.contents[:3]
-            for attr,value in link_tag.attrs:
-                if attr=='href':
-                    id = re.search('clan_viewraidlog\\.php\?viewlog=(\\d+)',
-                                   value)
-                    # Store id in self.log_ids
-                    try:
-                        self.log_ids.append(int(id.group(1)))
-                    except ValueError:
-                        exit('ERROR: Invalid ID parsed. Log format may have '
-                             + 'changed.')
+        log_startrow = 0        # Log iterator for clan_oldraidlogs.php?startrow=
+        while True:
+            print 'Getting Log IDs '+str(log_startrow)+'-'+str(log_startrow+9)+'...'
+            for td in self.soup.findAll('td', {'class': 'tiny'}):
+                open_bracket, link_tag, close_bracket = td.contents[:3]
+                for attr,value in link_tag.attrs:
+                    if attr=='href':
+                        id = re.search('clan_viewraidlog\\.php\?viewlog=(\\d+)',
+                                       value)
+                        # Store id in self.log_ids
+                        try:
+                            self.log_ids.append(int(id.group(1)))
+                        except ValueError:
+                            exit('ERROR: Invalid ID parsed. Log format may have '
+                                 + 'changed.')
+            if len(self.soup.findAll(text="(No previous Clan Dungeon records found)")) > 0:
+                break
+            else:
+                log_startrow += 10
+                # Open next page
+                try:
+                    html = urllib2.urlopen(KOL_URL+OLDLOGS_PAGE+str(log_startrow))
+                    self.soup = BeautifulSoup(html)
+                    html.close()
+                except:
+                    exit('ERROR: Could not resolve URL: '+KOL_URL+OLDLOGS_PAGE+str(log_startrow)
+                         + '\nPlease check your connection.')
+                    raise
+
         if len(self.log_ids):
             print 'Success! '+str(len(self.log_ids))+' log IDs discovered.'
         else:
@@ -192,17 +215,21 @@ class ClanLog():
         dungeonName = m.group(1).replace(' ','_')
 
         # Create or get dungeon log
-        dungeonLog = None
-        for dlog in self.dungeon_logs:
-            if dlog.dungeonName == dungeonName:
-                dungeonLog = dlog
-        if dungeonLog is None:
-            dungeonLog = DungeonLog(dungeonName)
-            self.dungeon_logs.append(dungeonLog)
+        if os.path.exists('dungeons/'+dungeonName+'.yml'):
+            dungeonLog = None
+            for dlog in self.dungeon_logs:
+                if dlog.dungeonName == dungeonName:
+                    dungeonLog = dlog
+            if dungeonLog is None:
+                dungeonLog = DungeonLog(dungeonName)
+                self.dungeon_logs.append(dungeonLog)
+            dungeonLog.process_log(log_soup)
+        else:
+            print 'Warning: '+dungeonName+'.yml not found. Skipping...'
 
-        dungeonLog.process_log(log_soup)
-
-    #TODO: Export csv function
+    def export_csv(self):
+        for dungeonLog in self.dungeon_logs:
+            dungeonLog.export_csv()
 
 def main(argv=None):
     #TODO: Command line arguments
@@ -226,11 +253,11 @@ def main(argv=None):
     # Connect to oldlogs.php, get log ids
     c = ClanLog()
     num_logids = len(c.log_ids)
+    # Process log_ids
     for i,logid in enumerate(c.log_ids):
         print 'Processing log #'+str(logid)+'... ('+str(i+1)+'/'+str(num_logids)+')'
         c.process_logid(logid)
-
-    c.dungeon_logs[0].export_csv()
+    c.export_csv()
 
 if __name__ == '__main__':
     sys.exit(main())
