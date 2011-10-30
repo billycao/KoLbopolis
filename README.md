@@ -22,7 +22,7 @@ Installation and Use
 ### Quick Start
 
 1. Download and install the prerequisites, then download KoLbopolis.
-2. Log into Kingdom of Loathing
+2. (Optional) Open and log into [KoLmafia](http://kolmafia.sourceforge.net/)
 3. Open your terminal (Start -> Run -> cmd.exe)
 4. Navigate to where you downloaded KoLbopolis
 5. Run the following command:
