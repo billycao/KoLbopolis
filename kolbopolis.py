@@ -9,6 +9,8 @@ __license__ = 'MIT'
 __version__ = '0.1'
 __status__  = 'Prototype'
 
+KOL_URL = ''
+
 def main(argv=None):
     #TODO: Command line arguments
     # -l [log number]   - Specific log number to process
@@ -29,7 +31,7 @@ def main(argv=None):
             # KOL_URL = 'http://kingdomofloathing.com/'
 
     # Connect to oldlogs.php, get log ids
-    c = ClanLog()
+    c = ClanLog(KOL_URL)
     num_logids = len(c.log_ids)
     # Process log_ids
     for i,logid in enumerate(c.log_ids):

@@ -7,7 +7,7 @@ from BeautifulSoup import BeautifulSoup
 __author__ = 'billy'
 
 class ClanLog():
-    KOL_URL     = ''
+    KOL_URL      = ''
     OLDLOGS_PAGE = 'clan_oldraidlogs.php?startrow='
     VIEWLOG_PAGE = 'clan_viewraidlog.php'
 
@@ -17,8 +17,9 @@ class ClanLog():
     dungeon_logs = []       # List of DungeonLog objects
 
 
-    def __init__(self):
+    def __init__(self, KOL_URL):
         """Open clan old logs page, create soup object from page data."""
+        self.KOL_URL = KOL_URL
         #TODO: Verify page format (in case the KoL devs changed something)
         print 'Opening '+self.KOL_URL+self.OLDLOGS_PAGE+'... '
         try:
